@@ -1,0 +1,663 @@
+// Prisma schema for scopeflow.
+// Connection details live in prisma.config.ts / .env, not here (Prisma v7).
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Auth & Workspace
+// ---------------------------------------------------------------------------
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String
+  name          String?
+  emailVerified DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  memberships             WorkspaceMember[]
+  leadsOwned              Lead[]                    @relation("LeadOwner")
+  emailVerificationTokens EmailVerificationToken[]
+  passwordResetTokens     PasswordResetToken[]
+}
+
+model EmailVerificationToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+enum WorkspaceRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+model Workspace {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members               WorkspaceMember[]
+  clients               Client[]
+  leads                 Lead[]
+  services              Service[]
+  projects              Project[]
+  activities            Activity[]
+  aiProviderCredentials AIProviderCredential[]
+  aiUsage               AIUsage[]
+  branding              WorkspaceBranding?
+}
+
+// One row per workspace: the company profile shown on generated proposals
+// and quotations (logo, contact details, accent color, default terms).
+// Configured once in Settings — never duplicated onto individual documents.
+// All fields are optional; a workspace with no branding configured falls
+// back to plain, unbranded documents (see lib/branding.ts).
+model WorkspaceBranding {
+  id                 String   @id @default(cuid())
+  workspaceId        String   @unique
+  companyName        String?
+  companyEmail       String?
+  companyPhone       String?
+  companyWebsite     String?
+  address            String?  @db.Text
+  taxId              String?
+  currency           String   @default("INR")
+  accentColor        String?
+  paymentTerms       String?  @db.Text
+  termsAndConditions String?  @db.Text
+  // Local-disk storage (lib/storage.ts) — a server-generated filename under
+  // storage/uploads/{workspaceId}/branding/, never derived from user input.
+  logoFilename       String?
+  logoMimeType       String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+}
+
+model WorkspaceMember {
+  id          String        @id @default(cuid())
+  workspaceId String
+  userId      String
+  role        WorkspaceRole @default(OWNER)
+  createdAt   DateTime      @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// Shared enums
+// ---------------------------------------------------------------------------
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum Confidence {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+// Shared by Proposal and Quotation — the spec tracks both through the same lifecycle.
+enum DocumentStatus {
+  DRAFT
+  SENT
+  VIEWED
+  ACCEPTED
+  CHANGES_REQUESTED
+  REJECTED
+  EXPIRED
+  // Replaced by a fresh document representing the complete current scope —
+  // e.g. a quotation whose underlying proposal was re-accepted after a new
+  // requirement was approved. Never re-used on the row that replaces it.
+  SUPERSEDED
+}
+
+// ORIGINAL: the project's first Proposal/Quotation, covering the scope that
+// was priced/accepted first. ADDITIONAL: a later Proposal/Quotation covering
+// only new/changed scope approved after the ORIGINAL quotation was already
+// accepted — never modifies the ORIGINAL documents.
+enum DocumentKind {
+  ORIGINAL
+  ADDITIONAL
+}
+
+// ---------------------------------------------------------------------------
+// Client & Lead
+// ---------------------------------------------------------------------------
+
+model Client {
+  id          String   @id @default(cuid())
+  workspaceId String
+  name        String
+  company     String?
+  email       String?
+  phone       String?
+  notes       String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  leads     Lead[]
+
+  @@index([workspaceId])
+}
+
+enum LeadSource {
+  WEBSITE
+  EMAIL
+  WHATSAPP
+  LINKEDIN
+  REFERRAL
+  MANUAL
+  OTHER
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  ACTIVE
+  WON
+  LOST
+}
+
+model Lead {
+  id                 String     @id @default(cuid())
+  workspaceId        String
+  clientId           String?
+  name               String
+  company            String?
+  email              String
+  phone              String?
+  website            String?
+  source             LeadSource @default(OTHER)
+  industry           String?
+  initialRequirement String?    @db.Text
+  estimatedBudget    Decimal?   @db.Decimal(14, 2)
+  expectedTimeline   String?
+  ownerId            String?
+  status             LeadStatus @default(NEW)
+  priority           Priority   @default(MEDIUM)
+  notes              String?    @db.Text
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+
+  workspace          Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  client             Client?             @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  owner              User?               @relation("LeadOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  activities         Activity[]
+  // A Lead is the client/company relationship — it can have many independent
+  // Projects, each owning its own Requirements/Proposal/Quotation (never
+  // shared between Projects). See Project below.
+  projects           Project[]
+
+  @@unique([workspaceId, email])
+  @@index([workspaceId, status])
+  @@index([clientId])
+}
+
+enum InquiryContentType {
+  EMAIL
+  WHATSAPP
+  NOTES
+  OTHER
+}
+
+// Immutable copy of the client's raw inquiry — never edited after creation.
+// Project-scoped: pasting client info is the direct input mechanism for a
+// specific Project's requirements and must never leak across a Lead's other
+// Projects.
+model OriginalInquiry {
+  id          String             @id @default(cuid())
+  projectId   String
+  contentType InquiryContentType @default(OTHER)
+  content     String             @db.Text
+  createdAt   DateTime           @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+}
+
+enum AIProviderType {
+  OPENAI
+  ANTHROPIC
+  GEMINI
+}
+
+// ---------------------------------------------------------------------------
+// Requirements
+// ---------------------------------------------------------------------------
+
+enum RequirementCategory {
+  FUNCTIONAL
+  NON_FUNCTIONAL
+  INTEGRATION
+  CONSTRAINT
+}
+
+// An approval-workflow state — separate from `confidence` below, which
+// tracks how certain the extraction is, not whether it's been approved.
+enum RequirementStatus {
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+}
+
+model Requirement {
+  id               String              @id @default(cuid())
+  projectId        String
+  category         RequirementCategory
+  requirement      String              @db.Text
+  status           RequirementStatus   @default(PENDING_APPROVAL)
+  priority         Priority            @default(MEDIUM)
+  confidence       Confidence          @default(MEDIUM)
+  evidence         String?             @db.Text
+  notes            String?             @db.Text
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+}
+
+// A snapshot taken each time the user clicks "Approve Requirements". Scoped
+// per-Project so each Project's approval history is independent.
+model RequirementVersion {
+  id             String   @id @default(cuid())
+  projectId      String
+  version        Int
+  createdById    String?
+  changesSummary String?  @db.Text
+  snapshot       Json
+  createdAt      DateTime @default(now())
+
+  project           Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  proposalVersions  ProposalVersion[]
+  quotationVersions QuotationVersion[]
+
+  @@unique([projectId, version])
+}
+
+// ---------------------------------------------------------------------------
+// Proposal & Quotation
+// ---------------------------------------------------------------------------
+
+model Proposal {
+  id                 String         @id @default(cuid())
+  projectId          String
+  // ORIGINAL: the project's first proposal. ADDITIONAL: a later, separate
+  // proposal covering only new scope approved after the ORIGINAL quotation
+  // was accepted — see DocumentKind.
+  kind               DocumentKind   @default(ORIGINAL)
+  status             DocumentStatus @default(DRAFT)
+  currentVersion     Int            @default(1)
+  // Optional per-document overrides of the workspace's branding defaults
+  // (WorkspaceBranding remains the fallback — see lib/branding.ts). Payment
+  // terms has no separate override here: ProposalVersion.content.paymentTerms
+  // already is the document-specific value, so a second field would just
+  // duplicate it.
+  accentColor        String?
+  termsAndConditions String?        @db.Text
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  project        Project                 @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  versions       ProposalVersion[]
+  shares         ProposalShare[]
+  quotations     Quotation[]
+  changeRequests ProposalChangeRequest[]
+
+  @@index([projectId])
+}
+
+model ProposalVersion {
+  id                  String   @id @default(cuid())
+  proposalId          String
+  version             Int
+  content             Json
+  // The exact approved-requirement snapshot this version was generated
+  // from — persisted at generation time so historical documents always show
+  // the scope they actually had, never re-derived from current data.
+  requirementVersionId String
+  createdById         String?
+  createdAt           DateTime @default(now())
+  // Bumped whenever this version's content is edited in place, not just on
+  // creation — lets a "did this change since the client decided" check work
+  // for both a manual edit and a brand-new regenerated version.
+  updatedAt           DateTime @updatedAt
+
+  proposal          Proposal           @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  requirementVersion RequirementVersion @relation(fields: [requirementVersionId], references: [id])
+  changeRequests     ProposalChangeRequest[]
+
+  @@unique([proposalId, version])
+  @@index([requirementVersionId])
+}
+
+// Created whenever a client uses "Request Changes" on the public proposal
+// page — gives the sales rep a durable, queryable record of what was asked
+// for (shown on the Proposal page, the Project page, and Dashboard "Needs
+// Your Attention"), independent of the Activity feed.
+model ProposalChangeRequest {
+  id                String    @id @default(cuid())
+  projectId         String
+  proposalId        String
+  proposalVersionId String
+  message           String    @db.Text
+  createdAt         DateTime  @default(now())
+  // Set when the agency actually edits/regenerates the proposal content in
+  // response — independent of Proposal.status, which a later resend can
+  // reset back to SENT without addressing anything. Null means still open.
+  resolvedAt        DateTime?
+
+  project         Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  proposal        Proposal        @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  proposalVersion ProposalVersion @relation(fields: [proposalVersionId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([proposalId])
+}
+
+// Reusable starting prices for the agency's own catalogue — never fixed on a quotation.
+model Service {
+  id           String   @id @default(cuid())
+  workspaceId  String
+  name         String
+  description  String?
+  defaultPrice Decimal  @db.Decimal(14, 2)
+  unit         String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  workspace      Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  quotationItems QuotationItem[]
+
+  @@index([workspaceId])
+}
+
+model Quotation {
+  id                 String         @id @default(cuid())
+  projectId          String
+  proposalId         String?
+  // ORIGINAL: the project's first quotation. ADDITIONAL: a later, separate
+  // quotation covering only new scope, created from an ADDITIONAL proposal —
+  // see DocumentKind. A superseded ORIGINAL quotation keeps kind ORIGINAL;
+  // it's the replacement row that carries the live commercial document.
+  kind               DocumentKind   @default(ORIGINAL)
+  status             DocumentStatus @default(DRAFT)
+  currentVersion     Int            @default(1)
+  // Optional per-document overrides of the workspace's branding defaults
+  // (WorkspaceBranding remains the fallback — see lib/branding.ts). Payment
+  // terms has no separate override here: QuotationVersion.paymentTerms
+  // already is the document-specific value.
+  accentColor        String?
+  termsAndConditions String?        @db.Text
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  project  Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  proposal Proposal?          @relation(fields: [proposalId], references: [id], onDelete: SetNull)
+  versions QuotationVersion[]
+  shares   QuotationShare[]
+
+  @@index([projectId])
+  @@index([proposalId])
+}
+
+// All totals are computed and stored by application code (lib/pricing.ts) — never by an LLM.
+model QuotationVersion {
+  id             String   @id @default(cuid())
+  quotationId    String
+  version        Int
+  // The overall discount rate the rep entered; discountAmount below is the
+  // computed absolute value derived from it (same in/stored-out split as
+  // taxRate/taxAmount).
+  discountPercent Decimal @default(0) @db.Decimal(5, 2)
+  discountAmount Decimal  @default(0) @db.Decimal(14, 2)
+  taxRate        Decimal  @default(0) @db.Decimal(5, 2)
+  subtotal       Decimal  @db.Decimal(14, 2)
+  taxAmount      Decimal  @db.Decimal(14, 2)
+  total          Decimal  @db.Decimal(14, 2)
+  paymentTerms   String?  @db.Text
+  // The exact approved-requirement snapshot this version's price covers —
+  // see ProposalVersion.requirementVersionId for the same rationale.
+  requirementVersionId String
+  createdById    String?
+  createdAt      DateTime @default(now())
+  // Bumped on every edit-in-place save — lets "did this change since the
+  // client decided" work, same as ProposalVersion.updatedAt.
+  updatedAt      DateTime @updatedAt
+
+  quotation          Quotation          @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  requirementVersion RequirementVersion @relation(fields: [requirementVersionId], references: [id])
+  items              QuotationItem[]
+
+  @@unique([quotationId, version])
+  @@index([requirementVersionId])
+}
+
+model QuotationItem {
+  id                 String  @id @default(cuid())
+  quotationVersionId String
+  serviceId          String?
+  description        String
+  quantity           Decimal @default(1) @db.Decimal(10, 2)
+  unitPrice          Decimal @db.Decimal(14, 2)
+  discountPercent    Decimal @default(0) @db.Decimal(5, 2)
+  lineTotal          Decimal @db.Decimal(14, 2)
+  sortOrder          Int     @default(0)
+
+  quotationVersion QuotationVersion @relation(fields: [quotationVersionId], references: [id], onDelete: Cascade)
+  service          Service?         @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+
+  @@index([quotationVersionId])
+}
+
+// The secure public /p/[token] link and its view/acceptance tracking.
+model ProposalShare {
+  id              String         @id @default(cuid())
+  proposalId      String
+  token           String         @unique
+  expiresAt       DateTime?
+  firstViewedAt   DateTime?
+  lastViewedAt    DateTime?
+  viewCount       Int            @default(0)
+  acceptedAt      DateTime?
+  acceptedByName  String?
+  acceptedByEmail String?
+  status          DocumentStatus @default(SENT)
+  createdAt       DateTime       @default(now())
+  // Set on either accept or reject (acceptedAt only covers accept) — the one
+  // thing "did the proposal change since the client decided" compares
+  // against, regardless of which way they decided.
+  respondedAt     DateTime?
+  // The client's optional free-text reason for rejecting, from the public
+  // reject form. Only ever meaningful when status is REJECTED.
+  rejectionReason String?        @db.Text
+
+  proposal Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+
+  @@index([proposalId])
+}
+
+// The secure public /q/[token] link and its view/acceptance tracking —
+// a direct structural mirror of ProposalShare above.
+model QuotationShare {
+  id              String         @id @default(cuid())
+  quotationId     String
+  token           String         @unique
+  expiresAt       DateTime?
+  firstViewedAt   DateTime?
+  lastViewedAt    DateTime?
+  viewCount       Int            @default(0)
+  acceptedAt      DateTime?
+  acceptedByName  String?
+  acceptedByEmail String?
+  status          DocumentStatus @default(SENT)
+  createdAt       DateTime       @default(now())
+  // Set on either accept or reject — mirrors ProposalShare.respondedAt.
+  respondedAt     DateTime?
+  // Mirrors ProposalShare.rejectionReason.
+  rejectionReason String?        @db.Text
+
+  quotation Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+
+  @@index([quotationId])
+}
+
+// ---------------------------------------------------------------------------
+// Project
+// ---------------------------------------------------------------------------
+
+// SCOPING is the initial phase (requirements → proposal → quotation, all
+// pre-delivery); ACTIVE ("In Progress" in the UI) begins once the quotation
+// is accepted. The finer-grained proposal/quotation states are already
+// tracked precisely by Proposal.status/Quotation.status — Project.status
+// only needs to distinguish these two coarse phases plus the existing
+// ON_HOLD/COMPLETED/CANCELLED.
+enum ProjectStatus {
+  SCOPING
+  ACTIVE
+  ON_HOLD
+  COMPLETED
+  CANCELLED
+}
+
+// The scope boundary: a Lead (client/company) can have many Projects, and
+// every Requirement/Proposal/Quotation belongs to exactly one Project —
+// never shared or mixed between a Lead's other Projects.
+model Project {
+  id          String        @id @default(cuid())
+  workspaceId String
+  leadId      String
+  name        String
+  overview    String?       @db.Text
+  budget      Decimal?      @db.Decimal(14, 2)
+  timeline    String?
+  status      ProjectStatus @default(SCOPING)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  workspace           Workspace               @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  lead                Lead                    @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  activities          Activity[]
+  originalInquiries   OriginalInquiry[]
+  requirements        Requirement[]
+  requirementVersions RequirementVersion[]
+  proposals           Proposal[]
+  quotations          Quotation[]
+  changeRequests      ProposalChangeRequest[]
+
+  @@index([workspaceId])
+  @@index([leadId])
+}
+
+// ---------------------------------------------------------------------------
+// Activity timeline (append-only)
+// ---------------------------------------------------------------------------
+
+model Activity {
+  id          String   @id @default(cuid())
+  workspaceId String
+  leadId      String?
+  projectId   String?
+  type        String
+  description String
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  lead      Lead?     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  project   Project?  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, createdAt])
+  @@index([leadId])
+  @@index([projectId])
+}
+
+// ---------------------------------------------------------------------------
+// AI (BYOK credentials + usage tracking)
+// ---------------------------------------------------------------------------
+
+// API key is AES-256-GCM encrypted at rest (lib/encryption.ts) — never logged,
+// never returned to the browser after initial entry.
+model AIProviderCredential {
+  id              String         @id @default(cuid())
+  workspaceId     String
+  provider        AIProviderType
+  apiKeyEncrypted String         @db.Text
+  model           String
+  isActive        Boolean        @default(true)
+  lastTestedAt    DateTime?
+  lastTestOk      Boolean?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, provider])
+}
+
+enum AIOperation {
+  GENERATE_PROPOSAL
+  GENERATE_FOLLOWUP
+  SUGGEST_NEGOTIATION
+  PARAPHRASE_REQUIREMENT
+  REVISE_PROPOSAL
+}
+
+model AIUsage {
+  id            String         @id @default(cuid())
+  workspaceId   String
+  provider      AIProviderType
+  model         String
+  operation     AIOperation
+  inputTokens   Int?
+  outputTokens  Int?
+  estimatedCost Decimal?       @db.Decimal(10, 4)
+  createdAt     DateTime       @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, createdAt])
+}
