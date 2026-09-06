@@ -212,7 +212,7 @@ export async function resetPasswordAction(
   redirect("/login?reset=1");
 }
 
-export async function verifyEmailAction(token: string): Promise<{ error?: string }> {
+export async function verifyEmailAction(token: string): Promise<{ error?: string; success?: boolean }> {
   const verificationToken = await db.emailVerificationToken.findUnique({ where: { token } });
   if (!verificationToken || verificationToken.expiresAt.getTime() < Date.now()) {
     return { error: "This verification link is invalid or has expired." };
@@ -231,5 +231,5 @@ export async function verifyEmailAction(token: string): Promise<{ error?: string
     }),
   ]);
 
-  redirect("/login?verified=1");
+  return { success: true };
 }
