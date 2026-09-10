@@ -47,7 +47,7 @@ export default async function RequirementsReviewPage({
       <div className="flex items-start justify-between gap-4">
         <PageHeader
           title={`Requirements — ${project.name}`}
-          description="Review and approve what the AI extracted before it's used in a proposal."
+          description="Review and approve each requirement before it's used in a proposal."
         />
         <div className="flex items-center gap-2">
           <AddClientInformationDialog

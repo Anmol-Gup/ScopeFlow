@@ -21,7 +21,6 @@ export default function robots(): MetadataRoute.Robots {
           // meant to be crawled or cached by a search engine.
           "/p/",
           "/q/",
-          "/book/",
         ],
       },
     ],
