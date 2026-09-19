@@ -13,6 +13,7 @@ import { DifferentiatorSection } from "@/components/marketing/differentiator-sec
 import { UseCasesSection } from "@/components/marketing/use-cases-section";
 import { ProposalVsQuotationSection } from "@/components/marketing/proposal-vs-quotation-section";
 import { ComparisonSection } from "@/components/marketing/comparison-section";
+import { BetaSection } from "@/components/marketing/beta-section";
 import { FaqSection } from "@/components/marketing/faq-section";
 import { FinalCtaSection } from "@/components/marketing/final-cta-section";
 import { SITE_URL, SITE_NAME, SITE_TITLE, SITE_DESCRIPTION } from "@/lib/site";
@@ -86,6 +87,7 @@ export default async function LandingPage() {
         <UseCasesSection />
         <ProposalVsQuotationSection />
         <ComparisonSection />
+        <BetaSection />
         <FaqSection />
         <FinalCtaSection />
       </main>

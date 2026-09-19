@@ -8,7 +8,7 @@ export function HeroSection() {
     <section className="mx-auto flex max-w-6xl flex-col items-center gap-12 px-4 py-16 sm:px-6 sm:py-20 lg:flex-row lg:items-center lg:gap-16 lg:py-28">
       <div className="flex max-w-2xl flex-col items-start gap-6 text-left">
         <span className="rounded-full border border-border bg-accent px-3 py-1 text-xs font-medium text-muted-foreground">
-          AI-powered proposal workflow for agencies
+          Now in beta — AI-powered proposal workflow for agencies
         </span>
         <h1 className="text-4xl font-semibold tracking-tight text-balance sm:text-5xl">
           Turn Client Requirements Into Professional Proposals
@@ -23,7 +23,7 @@ export function HeroSection() {
             nativeButton={false}
             render={
               <Link href="/signup">
-                Start Free
+                Join the beta
                 <ArrowRight />
               </Link>
             }
@@ -35,7 +35,7 @@ export function HeroSection() {
             render={<a href="#how-it-works">See How It Works</a>}
           />
         </div>
-        <p className="text-xs text-muted-foreground">No credit card required.</p>
+        <p className="text-xs text-muted-foreground">Free during beta. No credit card required.</p>
       </div>
       <div className="w-full lg:w-auto lg:shrink-0">
         <ProductVisual />

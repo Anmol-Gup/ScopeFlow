@@ -6,11 +6,12 @@ const PRODUCT_LINKS = [
   { href: "#features", label: "Features" },
   { href: "#use-cases", label: "Use cases" },
   { href: "#proposal-vs-quotation", label: "Proposal vs. quotation" },
+  { href: "#beta", label: "Beta" },
   { href: "#faq", label: "FAQ" },
 ];
 
 const ACCOUNT_LINKS = [
-  { href: "/signup", label: "Start free" },
+  { href: "/signup", label: "Join the beta" },
   { href: "/login", label: "Log in" },
 ];
 

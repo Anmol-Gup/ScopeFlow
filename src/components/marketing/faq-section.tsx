@@ -54,6 +54,11 @@ const FAQS = [
     answer:
       "Software and web development agencies, freelancers, IT consultants, digital agencies, and small service businesses that turn client requirements into priced proposals and need to keep that process organized as it happens.",
   },
+  {
+    question: "Is ScopeFlow free right now?",
+    answer:
+      "Yes. ScopeFlow is currently in beta and free to use while we work with early users to shape the product. Paid plans aren't live yet — billing is coming soon, and we'll give beta users advance notice before anything changes.",
+  },
 ];
 
 export function FaqSection() {

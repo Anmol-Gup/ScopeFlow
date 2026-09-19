@@ -10,7 +10,7 @@ export function FinalCtaSection() {
           Stop rebuilding proposals from scratch.
         </h2>
         <p className="max-w-xl text-muted-foreground">
-          Turn your next client brief into a professional proposal in minutes.
+          Turn your next client brief into a professional proposal in minutes. Free during beta.
         </p>
         <div className="flex flex-col gap-3 sm:flex-row">
           <Button
@@ -18,7 +18,7 @@ export function FinalCtaSection() {
             nativeButton={false}
             render={
               <Link href="/signup">
-                Start Free
+                Join the beta
                 <ArrowRight />
               </Link>
             }
