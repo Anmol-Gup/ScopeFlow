@@ -193,14 +193,16 @@ export default async function ProjectPage({
               approved · {pendingApprovalCount} pending approval
             </p>
           )}
-          <div>
-            <Button
-              variant="outline"
-              size="sm"
-              nativeButton={false}
-              render={<Link href={`/projects/${projectId}/requirements`}>Edit Requirements</Link>}
-            />
-          </div>
+          {requirementCount > 0 && (
+            <div>
+              <Button
+                variant="outline"
+                size="sm"
+                nativeButton={false}
+                render={<Link href={`/projects/${projectId}/requirements`}>Edit Requirements</Link>}
+              />
+            </div>
+          )}
         </CardContent>
       </Card>
 
