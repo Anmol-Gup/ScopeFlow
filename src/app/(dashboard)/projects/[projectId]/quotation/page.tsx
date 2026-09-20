@@ -300,7 +300,7 @@ export default async function QuotationPage({
                   ) : (
                     <SuggestNegotiationForm
                       quotationId={quotation.id}
-                      defaultTargetBudget={project.lead.estimatedBudget?.toString() ?? ""}
+                      defaultTargetBudget={project.budget?.toString() ?? ""}
                     />
                   )}
                 </CardContent>

@@ -33,7 +33,6 @@ export default async function NewLeadPage() {
           website: "",
           source: "MANUAL",
           industry: "",
-          initialRequirement: "",
           estimatedBudget: "",
           expectedTimeline: "",
           ownerId: currentUser?.id ?? "",

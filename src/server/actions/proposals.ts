@@ -107,7 +107,7 @@ export async function generateProposalAction(
       leadName: project.lead.name,
       company: project.lead.company,
       industry: project.lead.industry,
-      expectedTimeline: project.lead.expectedTimeline,
+      expectedTimeline: project.timeline,
       approvedRequirements,
     });
   } catch (error) {
@@ -249,7 +249,7 @@ export async function generateAdditionalProposalAction(
       leadName: project.lead.name,
       company: project.lead.company,
       industry: project.lead.industry,
-      expectedTimeline: project.lead.expectedTimeline,
+      expectedTimeline: project.timeline,
       approvedRequirements: combinedRequirements,
     });
   } catch (error) {
@@ -381,7 +381,7 @@ export async function previewProposalRevisionAction(
       leadName: proposal.project.lead.name,
       company: proposal.project.lead.company,
       industry: proposal.project.lead.industry,
-      expectedTimeline: proposal.project.lead.expectedTimeline,
+      expectedTimeline: proposal.project.timeline,
       currentRequirements: snapshot.map((r) => ({
         id: r.id,
         category: r.category,

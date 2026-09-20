@@ -42,7 +42,6 @@ export default async function EditLeadPage({
           website: lead.website ?? "",
           source: lead.source,
           industry: lead.industry ?? "",
-          initialRequirement: lead.initialRequirement ?? "",
           estimatedBudget: lead.estimatedBudget?.toString() ?? "",
           expectedTimeline: lead.expectedTimeline ?? "",
           ownerId: lead.ownerId ?? "",

@@ -25,7 +25,6 @@ export type LeadFormDefaults = {
   website: string;
   source: string;
   industry: string;
-  initialRequirement: string;
   estimatedBudget: string;
   expectedTimeline: string;
   ownerId: string;
@@ -41,7 +40,6 @@ const EMPTY_DEFAULTS: LeadFormDefaults = {
   website: "",
   source: "MANUAL",
   industry: "",
-  initialRequirement: "",
   estimatedBudget: "",
   expectedTimeline: "",
   ownerId: "",
@@ -140,16 +138,6 @@ export function LeadForm({
                 ))}
               </SelectContent>
             </Select>
-          </div>
-          <div className="flex flex-col gap-2 sm:col-span-2">
-            <Label htmlFor="initialRequirement">Initial requirement</Label>
-            <Textarea
-              id="initialRequirement"
-              name="initialRequirement"
-              rows={3}
-              placeholder="A short summary of what the client is asking for"
-              defaultValue={defaults.initialRequirement}
-            />
           </div>
         </CardContent>
       </Card>

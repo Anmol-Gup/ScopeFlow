@@ -37,7 +37,17 @@ export async function createProjectAction(
 
   const project = await db.$transaction(async (tx) => {
     const created = await tx.project.create({
-      data: { workspaceId, leadId, name, status: "SCOPING" },
+      data: {
+        workspaceId,
+        leadId,
+        name,
+        status: "SCOPING",
+        // Seeded from the lead's rough intake estimate as a starting point —
+        // this project's own budget/timeline (edited separately below) is
+        // what every proposal/quotation for it actually uses from here on.
+        budget: lead.estimatedBudget ?? undefined,
+        timeline: lead.expectedTimeline ?? undefined,
+      },
     });
     await logActivity(tx, {
       workspaceId,

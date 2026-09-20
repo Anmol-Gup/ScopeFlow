@@ -209,7 +209,6 @@ model Lead {
   website            String?
   source             LeadSource @default(OTHER)
   industry           String?
-  initialRequirement String?    @db.Text
   estimatedBudget    Decimal?   @db.Decimal(14, 2)
   expectedTimeline   String?
   ownerId            String?

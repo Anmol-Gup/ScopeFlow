@@ -331,7 +331,7 @@ export async function suggestNegotiationAction(
   const quotation = await db.quotation.findFirst({
     where: { id: quotationId, project: { workspaceId } },
     include: {
-      project: { select: { lead: { select: { name: true, estimatedBudget: true } } } },
+      project: { select: { budget: true, lead: { select: { name: true } } } },
       versions: { orderBy: { version: "desc" }, take: 1, include: { items: true } },
     },
   });
@@ -349,8 +349,8 @@ export async function suggestNegotiationAction(
   const targetBudgetRaw = String(formData.get("targetBudget") ?? "").trim();
   const targetBudget = targetBudgetRaw
     ? Number(targetBudgetRaw)
-    : quotation.project.lead.estimatedBudget
-      ? Number(quotation.project.lead.estimatedBudget)
+    : quotation.project.budget
+      ? Number(quotation.project.budget)
       : null;
 
   let result;

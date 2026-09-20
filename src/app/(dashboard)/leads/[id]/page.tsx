@@ -92,17 +92,6 @@ export default async function LeadDetailPage({
         </CardContent>
       </Card>
 
-      {lead.initialRequirement && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Initial requirement</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="whitespace-pre-wrap text-sm">{lead.initialRequirement}</p>
-          </CardContent>
-        </Card>
-      )}
-
       {lead.notes && (
         <Card>
           <CardHeader>
