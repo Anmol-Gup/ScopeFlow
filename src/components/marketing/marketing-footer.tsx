@@ -59,9 +59,18 @@ export function MarketingFooter() {
         </div>
       </div>
       <div className="border-t border-border px-4 py-6 sm:px-6">
-        <p className="mx-auto max-w-6xl text-xs text-muted-foreground">
-          © {new Date().getFullYear()} ScopeFlow. All rights reserved.
-        </p>
+        <div className="mx-auto flex max-w-6xl flex-col gap-1 text-xs text-muted-foreground">
+          <p>© {new Date().getFullYear()} ScopeFlow. All rights reserved.</p>
+          <p>
+            For enquiries, contact us:{" "}
+            <a
+              href="mailto:contact.agbusinesssolutions@gmail.com"
+              className="text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+            >
+              contact.agbusinesssolutions@gmail.com
+            </a>
+          </p>
+        </div>
       </div>
     </footer>
   );
